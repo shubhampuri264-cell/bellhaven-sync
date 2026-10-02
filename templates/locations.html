@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Every location on the website and what it matched</h2>
+  {% if not run %}<p class="muted">Run the pipeline first.</p>{% else %}
+  <table>
+    <tr><th>Website location</th><th>CRM account</th><th>Confidence</th><th>Outcome</th></tr>
+    {% for m in run.matches %}
+    <tr>
+      <td>{{ m.name }}<br><span class="muted">{{ m.address }}</span></td>
+      <td>{{ m.account_name or '(none)' }}<br><span class="muted">{{ m.account_id }}</span></td>
+      <td><span class="tag {{ m.confidence }}">{{ m.confidence }}</span></td>
+      <td>{{ m.outcome }}{% if m.proposal_keys | length > 1 %} + {{ m.proposal_keys | length - 1 }} more{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

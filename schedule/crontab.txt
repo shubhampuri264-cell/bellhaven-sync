@@ -1,0 +1,16 @@
+# Daily Bellhaven sync. Runs at 06:15 server time, before the sales team starts.
+#
+# The job is read-only against the CRM. It scrapes the website, compares it with
+# the CRM, and adds proposals to the review queue. A person approves them in the
+# review app. Items already approved or rejected are never queued again.
+#
+# flock -n  skips the run if yesterday's run is somehow still going.
+# A failed run exits non-zero and writes "PIPELINE FAILED" to the log.
+#
+# Install with:  crontab schedule/crontab.txt
+
+15 6 * * * cd /opt/bellhaven-sync && mkdir -p logs && flock -n /tmp/bellhaven-sync.lock .venv/bin/python pipeline.py >> logs/pipeline.log 2>&1
+
+# Windows equivalent (Task Scheduler), same job on a Windows machine:
+#   schtasks /create /tn "bellhaven-sync" /sc daily /st 06:15 ^
+#     /tr "cmd /c cd /d C:\path\to\bellhaven-sync && .venv\Scripts\python pipeline.py >> logs\pipeline.log 2>&1"

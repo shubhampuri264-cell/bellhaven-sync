@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+{% if not proposals %}<p class="muted">Nothing here.</p>{% endif %}
+{% for p in proposals %}
+<div class="card">
+  <h2>{{ p.title }}</h2>
+  <span class="tag">{{ p.action }}</span>
+  <span class="tag {{ p.confidence }}">{{ p.confidence }} confidence</span>
+  {% if p.account_id %}<span class="muted">account {{ p.account_id }}</span>{% endif %}
+
+  <table>
+    <tr><th>Field</th><th>Now</th><th>Proposed</th></tr>
+    {% for c in p.changes %}
+    <tr><td>{{ c.field }}</td><td>{{ c.from or '(empty)' }}</td><td><b>{{ c.to }}</b></td></tr>
+    {% endfor %}
+  </table>
+
+  <b>Evidence</b>
+  <ul>{% for line in p.evidence %}<li>{{ line }}</li>{% endfor %}</ul>
+
+  <details><summary>API calls this will make</summary><pre>{{ p.ops | tojson(indent=2) }}</pre></details>
+  {% if p.result %}<details open><summary>Result</summary><pre>{{ p.result | tojson(indent=2) }}</pre></details>{% endif %}
+  {% if p.decided_at %}<p class="muted">{{ p.status }} at {{ p.decided_at }}{% if p.decision_note %}: {{ p.decision_note }}{% endif %}</p>{% endif %}
+
+  {% if p.status in ('pending', 'failed', 'stale') %}
+  <form method="post" class="inline">
+    <input type="text" name="note" placeholder="Reviewer note (optional)">
+    {% if p.status != 'stale' %}
+    <button class="approve" formaction="{{ url_for('approve', key=p.key) }}">Approve and write to CRM</button>
+    {% endif %}
+    <button class="reject" formaction="{{ url_for('reject', key=p.key) }}">Reject</button>
+  </form>
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}
