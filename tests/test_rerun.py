@@ -105,6 +105,30 @@ def test_stale_proposal_is_refused():
     assert len(crm.writes) == writes_before
 
 
+def test_approving_twice_writes_once():
+    crm, locations, conn = world()
+    run(crm, locations, conn)
+    rename = next(p for p in store.list_proposals(conn, "pending") if p["account_id"] == "RENAME")
+    apply_proposal(crm, rename)
+    writes_before = len(crm.writes)
+    result = apply_proposal(crm, rename)  # the second click of a double click
+    assert len(crm.writes) == writes_before
+    assert "nothing written" in result["log"][0]
+
+
+def test_a_late_error_never_reopens_a_decided_proposal():
+    crm, locations, conn = world()
+    run(crm, locations, conn)
+    rename = next(p for p in store.list_proposals(conn, "pending") if p["account_id"] == "RENAME")
+    store.set_status(conn, rename["key"], "approved", "", apply_proposal(crm, rename))
+    store.set_status(conn, rename["key"], "stale", "", {"error": "late"}, keep_decided=True)
+    assert store.get_proposal(conn, rename["key"])["status"] == "approved"
+    crm.accounts["RENAME"]["name"] = "Riverbend Manor"  # someone undoes the change in the CRM
+    stats = run(crm, locations, conn)
+    assert stats["skipped_decided"] == 1
+    assert all(p["account_id"] != "RENAME" for p in store.list_proposals(conn, "pending"))
+
+
 def test_sop_guard_blocks_reparenting_a_billing_locked_account():
     crm, _, _ = world()
     live = crm.get_account("LOCKED")

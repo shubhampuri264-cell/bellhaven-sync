@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS proposals (
 # approved  reviewer approved and the CRM write succeeded
 # rejected  reviewer said no
 # failed    reviewer approved but the CRM write failed (can be retried)
-# stale     the CRM record changed after we proposed (re-run the pipeline)
+# stale     the CRM record changed after we proposed (re-run the pipeline; approving
+#           again only succeeds if the change turns out to be there already)
 # obsolete  was pending, but the latest run no longer proposes it
 DECIDED = ("approved", "rejected")
 JSON_COLUMNS = ("changes", "evidence", "ops", "result")
@@ -107,10 +108,14 @@ def get_proposal(conn, key):
     return _row(row) if row else None
 
 
-def set_status(conn, key, status, note="", result=None):
+def set_status(conn, key, status, note="", result=None, keep_decided=False):
+    """keep_decided leaves an approved or rejected proposal alone. Errors use it, so a late
+    error (for example from the second click of a double click) can never reopen a decision."""
+    sql = "UPDATE proposals SET status = ?, decided_at = ?, decision_note = ?, result = ? WHERE key = ?"
+    if keep_decided:
+        sql += " AND status NOT IN ('approved', 'rejected')"
     with conn:
-        conn.execute("UPDATE proposals SET status = ?, decided_at = ?, decision_note = ?, result = ? WHERE key = ?",
-                     (status, now(), note, json.dumps(result) if result is not None else None, key))
+        conn.execute(sql, (status, now(), note, json.dumps(result) if result is not None else None, key))
 
 
 def status_counts(conn):

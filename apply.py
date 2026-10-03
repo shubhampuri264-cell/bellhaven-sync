@@ -20,11 +20,18 @@ class ApplyError(Exception):
     """The CRM accepted the call but the record does not show the change."""
 
 
+def _already_applied(live, op):
+    """Does the live account already hold every value this patch would write?"""
+    fields = op["fields"]
+    return "$NEW" not in fields.values() and all(live.get(f) == v for f, v in fields.items())
+
+
 def _check(crm, op):
     """Drift check and SOP guard for one patch, against the live account."""
     live = crm.get_account(op["account_id"])
     drift = {f: (old, live.get(f)) for f, old in op["expect"].items() if live.get(f) != old}
-    if drift:
+    # Drift that is only our own change, already written (a double click or a retry), is not stale.
+    if drift and not (set(drift) <= set(op["fields"]) and _already_applied(live, op)):
         raise StaleProposal(f"account {op['account_id']} changed since proposed: {drift}")
     new_parent = op["fields"].get("parent_id")
     if new_parent is not None and new_parent != live["parent_id"] and billing_locked(live):
@@ -69,6 +76,9 @@ def apply_proposal(crm, proposal):
                 log.append(f"created {new_id} '{op['fields']['name']}'")
             _verify(crm, new_id, {k: v for k, v in op["fields"].items() if k != "note"}, log)
         else:
+            if _already_applied(live[op["account_id"]], op):
+                log.append(f"{op['account_id']} already has these values, nothing written")
+                continue
             fields = {k: (new_id if v == "$NEW" else v) for k, v in op["fields"].items()}
             if op.get("append_note"):
                 old_note = live[op["account_id"]]["note"]

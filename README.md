@@ -15,7 +15,7 @@ copy .env.example .env            then paste your CRM token into .env
 python pipeline.py --dry-run      print proposals, save nothing
 python pipeline.py                scrape, match, fill the review queue
 python app.py                     review app at http://127.0.0.1:5000
-pytest                            34 tests, no network needed
+pytest                            36 tests, no network needed
 ```
 
 ## How it is put together
@@ -85,6 +85,7 @@ Every proposal gets a key built from the action, the record, and the new values.
 * Pending keys are refreshed in place, not duplicated.
 * A pending proposal that the latest run no longer produces is marked obsolete.
 * Accounts already marked duplicate or CHOW are skipped by the matcher.
+* Approving the same proposal twice (a double click) writes once. The second approve finds the values already in place and counts as approved, and an error can never turn an approved or rejected proposal back into an open one. This came up in the first real run, where two approvals were labelled stale even though their changes had landed.
 
 Before any write, `apply.py` compares the live account with the snapshot taken when the proposal was made. If the record changed, the proposal is marked stale and nothing is written. After every write it reads the account back and confirms the change landed. Creating an account first checks whether it already exists, so a retry after a half finished change of ownership does not create a second account.
 
@@ -96,7 +97,7 @@ I chose cron on one machine over GitHub Actions because the decision history liv
 
 ## Tests
 
-`pytest` runs 34 tests against an in-memory fake CRM. They cover each row of the table above, the look-alike cases, the SOP guard, stale proposals, retry after a partial failure, and the re-run promises.
+`pytest` runs 36 tests against an in-memory fake CRM. They cover each row of the table above, the look-alike cases, the SOP guard, stale proposals, a double approve, retry after a partial failure, and the re-run promises.
 
 ## What I would build next
 

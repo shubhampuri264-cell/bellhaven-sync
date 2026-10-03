@@ -56,7 +56,7 @@ def approve(key):
     conn = store.connect()
     proposal = store.get_proposal(conn, key)
     note = request.form.get("note", "")
-    if not proposal or proposal["status"] not in ("pending", "failed"):
+    if not proposal or proposal["status"] not in ("pending", "failed", "stale"):
         flash("That proposal is not open for approval.")
         return redirect(url_for("index"))
     try:
@@ -65,7 +65,7 @@ def approve(key):
         flash(f"Approved and written to the CRM: {proposal['title']}")
     except Exception as error:
         status = "stale" if isinstance(error, StaleProposal) else "failed"
-        store.set_status(conn, key, status, note, {"error": f"{type(error).__name__}: {error}"})
+        store.set_status(conn, key, status, note, {"error": f"{type(error).__name__}: {error}"}, keep_decided=True)
         flash(f"NOT written ({status}): {error}")
     return redirect(url_for("index"))
 

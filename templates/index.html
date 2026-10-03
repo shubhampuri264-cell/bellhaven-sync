@@ -25,9 +25,7 @@
   {% if p.status in ('pending', 'failed', 'stale') %}
   <form method="post" class="inline">
     <input type="text" name="note" placeholder="Reviewer note (optional)">
-    {% if p.status != 'stale' %}
     <button class="approve" formaction="{{ url_for('approve', key=p.key) }}">Approve and write to CRM</button>
-    {% endif %}
     <button class="reject" formaction="{{ url_for('reject', key=p.key) }}">Reject</button>
   </form>
   {% endif %}
